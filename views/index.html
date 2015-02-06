@@ -12,13 +12,28 @@
     <th>ID</th>
     <th>Name</th>
     <th>Price</th>
+    <th></th>
+    <th></th>
   </tr>
 
   {{ range . }}
   <tr>
     <td>{{ .Id }}</td>
-    <td>{{ .Name }}</td>
-    <td>{{ .Price }}</td>
+    <form action="/products/{{ .Id }}" method="POST">
+      <input type="hidden" name="_method" value="PUT">
+
+      <td><input type="text" name="name" value="{{ .Name }}" /></td>
+      <td><input type="text" name="price" value="{{ .Price }}" /></td>
+      <td><button>Update</button></td>
+    </form>
+    <td>
+      <form action="/products/new" method="POST">
+        <input type="hidden" name="_method" value="DELETE">
+
+        <input type="hidden" name="id" value="{{ .Id }}">
+        <button>Delete</button>
+      </form>
+    </td>
   </tr>
   {{ end }}
 
