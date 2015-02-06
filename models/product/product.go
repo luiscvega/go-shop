@@ -2,8 +2,8 @@ package product
 
 import (
 	"database/sql"
+
 	"github.com/luiscvega/model"
-	"log"
 )
 
 var DB *sql.DB
@@ -17,26 +17,12 @@ type Product struct {
 func All() ([]Product, error) {
 	products := make([]Product, 0)
 
-	rows, err := DB.Query("SELECT id, name, price FROM products")
+	err := model.All("products", &products, DB)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-                p := Product{}
-		err := rows.Scan(&p.Id, &p.Name, &p.Price)
-		if err != nil {
-			log.Fatal(err)
-		}
-                products = append(products, p)
-	}
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-        return products, nil
+	return products, nil
 }
 
 func Create(p *Product) error {
