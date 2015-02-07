@@ -22,13 +22,22 @@ func main() {
 
 	product.DB = db
 
-	app := cuba.New()
+	mux := cuba.New()
 
-	app.HandleFunc("/products/new", productsHandler)
-	app.HandleFunc("/", rootHandler)
+	mux.Add("/products/:id", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" {
+			product.Delete(r.FormValue("params"))
+		}
+
+		http.Redirect(w, r, "/", http.StatusFound)
+	})
+
+	mux.Add("/products", productsHandler)
+
+	mux.Add("/", rootHandler)
 
 	fmt.Println("Starting...")
-	http.ListenAndServe(":8080", app.Mux)
+	http.ListenAndServe(":8080", mux)
 }
 
 func productsHandler(w http.ResponseWriter, r *http.Request) {
@@ -37,10 +46,6 @@ func productsHandler(w http.ResponseWriter, r *http.Request) {
 		p.Name = r.FormValue("name")
 		p.Price, _ = strconv.Atoi(r.FormValue("price"))
 		product.Create(&p)
-	}
-
-	if r.Method == "DELETE" {
-		product.Delete(r.FormValue("id"))
 	}
 
 	http.Redirect(w, r, "/", http.StatusFound)

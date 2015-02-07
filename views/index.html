@@ -1,6 +1,6 @@
 <h1>Create a product</h1>
 
-<form action="/products/new" method="POST">
+<form action="/products" method="POST">
   <input type="text" name="name" value="Luis' Laptop"/>
   <br />
   <input type="text" name="price" value="300" />
@@ -27,10 +27,9 @@
       <td><button>Update</button></td>
     </form>
     <td>
-      <form action="/products/new" method="POST">
+      <form action="/products/{{ .Id }}" method="POST">
         <input type="hidden" name="_method" value="DELETE">
 
-        <input type="hidden" name="id" value="{{ .Id }}">
         <button>Delete</button>
       </form>
     </td>
