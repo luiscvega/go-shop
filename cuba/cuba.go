@@ -7,10 +7,14 @@ import (
 )
 
 func New() mux {
-	var patterns []string
-	handlers := make(map[string]route)
+	var (
+		patterns = make([]string, 0)
+		handlers = make(map[string]route)
+		params   = make(map[string]string)
+		context  = &Context{Params: params}
+	)
 
-	return mux{patterns, handlers}
+	return mux{context, patterns, handlers}
 }
 
 type route struct {
@@ -19,6 +23,8 @@ type route struct {
 }
 
 type mux struct {
+	Context *Context
+
 	patterns []string
 	routes   map[string]route
 }
@@ -30,6 +36,9 @@ type Context struct {
 }
 
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	m.Context.W = w
+	m.Context.R = r
+
 	if r.Method == "POST" {
 		r.ParseForm()
 
@@ -42,13 +51,9 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	params := make(map[string]string)
-
-	c := &Context{w, r, params}
-
 	for _, pattern := range m.patterns {
 		if pattern == r.URL.Path {
-			m.routes[r.URL.Path].handler(c)
+			m.routes[r.URL.Path].handler(m.Context)
 			return
 		}
 
@@ -58,10 +63,10 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			route := m.routes[pattern]
 
 			for i, name := range route.names {
-				c.Params[name] = matches[0][i+1]
+				m.Context.Params[name] = matches[0][i+1]
 			}
 
-			route.handler(c)
+			route.handler(m.Context)
 			return
 		}
 	}
