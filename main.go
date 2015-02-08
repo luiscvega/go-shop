@@ -48,6 +48,10 @@ func main() {
 		c.Redirect("/")
 	})
 
+	mux.Get("/about/:name", func(c *cuba.Context) {
+		c.Render("about", map[string]string{"Name": c.Params["name"]})
+	})
+
 	mux.Get("/", func(c *cuba.Context) {
 		products, err := product.All()
 		if err != nil {
@@ -55,10 +59,6 @@ func main() {
 		}
 
 		c.Render("index", products)
-	})
-
-	mux.Get("/about/:name", func(c *cuba.Context) {
-		c.Render("about", nil)
 	})
 
 	for method, routes := range mux.Table {
