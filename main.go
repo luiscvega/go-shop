@@ -24,47 +24,41 @@ func main() {
 
 	mux := cuba.New()
 
-	mux.Add("/products/:id", func(c *cuba.Context) {
-		if c.R.Method == "PUT" {
-			var p product.Product
-			p.Id, _ = strconv.Atoi(c.Params["id"])
-			p.Name = c.R.FormValue("name")
-			p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
-			product.Update(&p)
-		}
-
-		if c.R.Method == "DELETE" {
-			product.Delete(c.Params["id"])
-		}
+	mux.Add("PUT", "/products/:id", func(c *cuba.Context) {
+		var p product.Product
+		p.Id, _ = strconv.Atoi(c.Params["id"])
+		p.Name = c.R.FormValue("name")
+		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
+		product.Update(&p)
 
 		http.Redirect(c.W, c.R, "/", http.StatusFound)
 	})
 
-	mux.Add("/products", productsHandler)
+	mux.Add("DELETE", "/products/:id", func(c *cuba.Context) {
+		product.Delete(c.Params["id"])
 
-	mux.Add("/", rootHandler)
+		http.Redirect(c.W, c.R, "/", http.StatusFound)
+	})
 
-	fmt.Println("Starting...")
-	http.ListenAndServe(":8080", mux)
-}
-
-func productsHandler(c *cuba.Context) {
-	if c.R.Method == "POST" {
+	mux.Add("POST", "/products", func(c *cuba.Context) {
 		var p product.Product
 		p.Name = c.R.FormValue("name")
 		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
 		product.Create(&p)
-	}
 
-	http.Redirect(c.W, c.R, "/", http.StatusFound)
-}
+		http.Redirect(c.W, c.R, "/", http.StatusFound)
+	})
 
-func rootHandler(c *cuba.Context) {
-	products, err := product.All()
-	if err != nil {
-		panic(err)
-	}
+	mux.Add("GET", "/", func(c *cuba.Context) {
+		products, err := product.All()
+		if err != nil {
+			panic(err)
+		}
 
-	tmpl := template.Must(template.ParseFiles("views/index.html"))
-	tmpl.ExecuteTemplate(c.W, "index.html", products)
+		tmpl := template.Must(template.ParseFiles("views/index.html"))
+		tmpl.ExecuteTemplate(c.W, "index.html", products)
+	})
+
+	fmt.Println("Starting...")
+	http.ListenAndServe(":8080", mux)
 }

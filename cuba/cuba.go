@@ -9,7 +9,7 @@ import (
 func New() mux {
 	var (
 		patterns = make([]string, 0)
-		handlers = make(map[string]route)
+		handlers = make(map[string]map[string]route)
 		params   = make(map[string]string)
 		context  = &Context{Params: params}
 	)
@@ -26,7 +26,7 @@ type mux struct {
 	Context *Context
 
 	patterns []string
-	routes   map[string]route
+	table   map[string]map[string]route
 }
 
 type Context struct {
@@ -51,16 +51,18 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	routes := m.table[r.Method]
+
 	for _, pattern := range m.patterns {
 		if pattern == r.URL.Path {
-			m.routes[r.URL.Path].handler(m.Context)
+			routes[r.URL.Path].handler(m.Context)
 			return
 		}
 
 		re := regexp.MustCompile(pattern)
 		matches := re.FindAllStringSubmatch(r.URL.Path, -1)
 		if len(matches) > 0 && len(matches[0]) > 1 {
-			route := m.routes[pattern]
+			route := routes[pattern]
 
 			for i, name := range route.captures {
 				m.Context.Params[name] = matches[0][i+1]
@@ -72,11 +74,16 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (m *mux) Add(pattern string, handler func(*Context)) {
+func (m *mux) Add(method, pattern string, handler func(*Context)) {
 	pattern, captures := prepareHandler(pattern)
 
 	m.patterns = append(m.patterns, pattern)
-	m.routes[pattern] = route{captures, handler}
+	_, ok := m.table[method]
+	if !ok {
+		m.table[method] = make(map[string]route)
+	}
+
+	m.table[method][pattern] = route{captures, handler}
 }
 
 func prepareHandler(pattern string) (string, []string) {
