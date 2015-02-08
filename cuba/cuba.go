@@ -1,6 +1,7 @@
 package cuba
 
 import (
+	"html/template"
 	"net/http"
 	"regexp"
 	"strings"
@@ -10,11 +11,9 @@ func New() mux {
 	var (
 		patterns = make([]string, 0)
 		handlers = make(map[string]map[string]route)
-		params   = make(map[string]string)
-		context  = &Context{Params: params}
 	)
 
-	return mux{context, patterns, handlers}
+	return mux{patterns, handlers}
 }
 
 type route struct {
@@ -23,15 +22,12 @@ type route struct {
 }
 
 type mux struct {
-	Context *Context
-
 	patterns []string
 	table    map[string]map[string]route
 }
 
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	m.Context.W = w
-	m.Context.R = r
+	context := &Context{w, r, make(map[string]string)}
 
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -52,7 +48,7 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for _, pattern := range m.patterns {
 		if pattern == r.URL.Path {
-			routes[r.URL.Path].handler(m.Context)
+			routes[r.URL.Path].handler(context)
 			return
 		}
 
@@ -62,10 +58,10 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			route := routes[pattern]
 
 			for i, name := range route.captures {
-				m.Context.Params[name] = matches[0][i+1]
+				context.Params[name] = matches[0][i+1]
 			}
 
-			route.handler(m.Context)
+			route.handler(context)
 			return
 		}
 	}
@@ -115,4 +111,9 @@ type Context struct {
 
 func (c Context) Redirect(url string) {
 	http.Redirect(c.W, c.R, url, http.StatusFound)
+}
+
+func (c Context) Render(view string, locals interface{}) {
+	tmpl := template.Must(template.ParseFiles("views/" + view + ".html"))
+	tmpl.ExecuteTemplate(c.W, view+".html", locals)
 }

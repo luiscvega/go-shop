@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 
@@ -55,8 +54,7 @@ func main() {
 			panic(err)
 		}
 
-		tmpl := template.Must(template.ParseFiles("views/index.html"))
-		tmpl.ExecuteTemplate(c.W, "index.html", products)
+		c.Render("index", products)
 	})
 
 	fmt.Println("Starting...")
