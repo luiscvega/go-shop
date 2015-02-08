@@ -24,12 +24,12 @@ func main() {
 
 	mux := cuba.New()
 
-	mux.Add("/products/:id", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "DELETE" {
-			product.Delete(r.FormValue("params"))
+	mux.Add("/products/:id", func(c *cuba.Context) {
+		if c.R.Method == "DELETE" {
+			product.Delete(c.Params["id"])
 		}
 
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(c.W, c.R, "/", http.StatusFound)
 	})
 
 	mux.Add("/products", productsHandler)
@@ -40,23 +40,23 @@ func main() {
 	http.ListenAndServe(":8080", mux)
 }
 
-func productsHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
+func productsHandler(c *cuba.Context) {
+	if c.R.Method == "POST" {
 		var p product.Product
-		p.Name = r.FormValue("name")
-		p.Price, _ = strconv.Atoi(r.FormValue("price"))
+		p.Name = c.R.FormValue("name")
+		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
 		product.Create(&p)
 	}
 
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(c.W, c.R, "/", http.StatusFound)
 }
 
-func rootHandler(w http.ResponseWriter, r *http.Request) {
+func rootHandler(c *cuba.Context) {
 	products, err := product.All()
 	if err != nil {
 		panic(err)
 	}
 
 	tmpl := template.Must(template.ParseFiles("views/index.html"))
-	tmpl.ExecuteTemplate(w, "index.html", products)
+	tmpl.ExecuteTemplate(c.W, "index.html", products)
 }

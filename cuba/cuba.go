@@ -3,30 +3,33 @@ package cuba
 import (
 	"net/http"
 	"regexp"
+	"strings"
 )
 
 func New() mux {
 	var patterns []string
-	handlers := make(map[string]cubaHandler)
+	handlers := make(map[string]route)
 
 	return mux{patterns, handlers}
 }
 
-type cubaHandler struct {
-	names []string
-	http.Handler
+type route struct {
+	names   []string
+	handler func(*Context)
 }
 
 type mux struct {
 	patterns []string
-	handlers map[string]cubaHandler
+	routes   map[string]route
+}
+
+type Context struct {
+	W      http.ResponseWriter
+	R      *http.Request
+	Params map[string]string
 }
 
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/favicon.ico" {
-		return
-	}
-
 	if r.Method == "POST" {
 		r.ParseForm()
 
@@ -39,30 +42,47 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	params := make(map[string]string)
+
+	c := &Context{w, r, params}
+
 	for _, pattern := range m.patterns {
 		if pattern == r.URL.Path {
-			m.handlers[r.URL.Path].ServeHTTP(w, r)
+			m.routes[r.URL.Path].handler(c)
 			return
 		}
 
 		re := regexp.MustCompile(pattern)
 		matches := re.FindAllStringSubmatch(r.URL.Path, -1)
 		if len(matches) > 0 && len(matches[0]) > 1 {
-			r.Form["params"] = append(r.Form["params"], matches[0][1])
-			m.handlers[pattern].ServeHTTP(w, r)
+			route := m.routes[pattern]
+
+			for i, name := range route.names {
+				c.Params[name] = matches[0][i+1]
+			}
+
+			route.handler(c)
 			return
 		}
 	}
 }
 
-func (m *mux) Add(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+func (m *mux) Add(pattern string, handler func(*Context)) {
 	pattern, names := prepareHandler(pattern)
+
 	m.patterns = append(m.patterns, pattern)
-	m.handlers[pattern] = cubaHandler{names, http.HandlerFunc(handler)}
+	m.routes[pattern] = route{names, handler}
 }
 
 func prepareHandler(pattern string) (string, []string) {
 	re := regexp.MustCompile(":[a-zA-Z0-9]+")
+
+	names := make([]string, 0)
+	for _, match := range re.FindAllStringSubmatch(pattern, -1) {
+		names = append(names, strings.Replace(match[0], ":", "", 1))
+	}
+
 	pattern = re.ReplaceAllLiteralString(pattern, "([a-zA-Z0-9]+)")
-	return pattern, []string{}
+
+	return pattern, names
 }
