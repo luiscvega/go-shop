@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	_ "github.com/lib/pq"
 
@@ -12,16 +13,34 @@ import (
 	"./models/product"
 )
 
+func RequestLogger(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("PATH:", r.URL.Path)
+
+		h.ServeHTTP(w, r)
+	})
+}
+
+func TimeLogger(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("TIME:", time.Now())
+
+		h.ServeHTTP(w, r)
+	})
+}
+
 func main() {
-	db, err := sql.Open("postgres", "dbname=shop")
+	var err error
+	product.DB, err = sql.Open("postgres", "dbname=shop")
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
-
-	product.DB = db
+	defer product.DB.Close()
 
 	mux := cuba.New()
+
+	mux.Use(RequestLogger)
+	mux.Use(TimeLogger)
 
 	mux.Put("/products/:id", func(c *cuba.Context) {
 		var p product.Product
@@ -63,15 +82,15 @@ func main() {
 		c.Render("index", products)
 	})
 
-	for method, routes := range mux.Table() {
-		fmt.Println("METHOD:", method)
+	//for method, routes := range mux.Table() {
+	//fmt.Println("METHOD:", method)
 
-		for _, route := range routes {
-			fmt.Println(route)
-		}
+	//for _, route := range routes {
+	//fmt.Println(route)
+	//}
 
-		fmt.Println("=====================================================================================")
-	}
+	//fmt.Println("=====================================================================================")
+	//}
 
 	fmt.Println("Starting...")
 	http.ListenAndServe(":8080", mux)
