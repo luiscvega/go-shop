@@ -57,6 +57,20 @@ func main() {
 		c.Render("index", products)
 	})
 
+	mux.Get("/about/:name", func(c *cuba.Context) {
+		c.Render("about", nil)
+	})
+
+	for method, routes := range mux.Table {
+		fmt.Println("METHOD:", method)
+
+		for _, route := range routes {
+			fmt.Println(route)
+		}
+
+		fmt.Println("=====================================================================================")
+	}
+
 	fmt.Println("Starting...")
 	http.ListenAndServe(":8080", mux)
 }

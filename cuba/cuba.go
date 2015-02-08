@@ -4,26 +4,21 @@ import (
 	"html/template"
 	"net/http"
 	"regexp"
-	"strings"
 )
 
 func New() mux {
-	var (
-		patterns = make([]string, 0)
-		handlers = make(map[string]map[string]route)
-	)
-
-	return mux{patterns, handlers}
+	table := make(map[string][]route)
+	return mux{table}
 }
 
 type route struct {
+	pattern  string
 	captures []string
 	handler  func(*Context)
 }
 
 type mux struct {
-	patterns []string
-	table    map[string]map[string]route
+	Table map[string][]route
 }
 
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -41,22 +36,21 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	routes, ok := m.table[r.Method]
+	routes, ok := m.Table[r.Method]
 	if !ok {
 		return
 	}
 
-	for _, pattern := range m.patterns {
-		if pattern == r.URL.Path {
-			routes[r.URL.Path].handler(context)
+	for _, route := range routes {
+		if route.pattern == r.URL.Path {
+			route.handler(context)
 			return
 		}
 
-		re := regexp.MustCompile(pattern)
+		re := regexp.MustCompile(route.pattern)
 		matches := re.FindAllStringSubmatch(r.URL.Path, -1)
-		if len(matches) > 0 && len(matches[0]) > 1 {
-			route := routes[pattern]
 
+		if len(matches) > 0 && len(matches[0]) > 1 {
 			for i, name := range route.captures {
 				context.Params[name] = matches[0][i+1]
 			}
@@ -67,24 +61,28 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (m *mux) Add(method, pattern string, handler func(*Context)) {
-	re := regexp.MustCompile(":[a-zA-Z0-9]+")
-
-	captures := make([]string, 0)
-	for _, match := range re.FindAllStringSubmatch(pattern, -1) {
-		captures = append(captures, strings.Replace(match[0], ":", "", 1))
-	}
-
-	pattern = re.ReplaceAllLiteralString(pattern, "([a-zA-Z0-9]+)")
-
-	m.patterns = append(m.patterns, pattern)
-
-	_, ok := m.table[method]
+func (m *mux) Add(method, path string, handler func(*Context)) {
+	// Initialize method
+	_, ok := m.Table[method]
 	if !ok {
-		m.table[method] = make(map[string]route)
+		m.Table[method] = make([]route, 0)
 	}
 
-	m.table[method][pattern] = route{captures, handler}
+	re := regexp.MustCompile(":([a-zA-Z0-9]+)")
+	matches := re.FindAllStringSubmatch(path, -1)
+
+	for _, match := range matches {
+		captures := make([]string, 0, len(matches))
+		captures = append(captures, match[1])
+
+		pattern := re.ReplaceAllLiteralString(path, "([a-zA-Z0-9]+)")
+
+		m.Table[method] = append(m.Table[method], route{pattern, captures, handler})
+
+		return
+	}
+
+	m.Table[method] = append(m.Table[method], route{path, nil, handler})
 }
 
 func (m *mux) Get(pattern string, handler func(*Context)) {
