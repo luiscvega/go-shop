@@ -45,7 +45,10 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	routes := m.table[r.Method]
+	routes, ok := m.table[r.Method]
+	if !ok {
+		return
+	}
 
 	for _, pattern := range m.patterns {
 		if pattern == r.URL.Path {
