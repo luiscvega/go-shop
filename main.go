@@ -25,6 +25,14 @@ func main() {
 	mux := cuba.New()
 
 	mux.Add("/products/:id", func(c *cuba.Context) {
+		if c.R.Method == "PUT" {
+			var p product.Product
+			p.Id, _ = strconv.Atoi(c.Params["id"])
+			p.Name = c.R.FormValue("name")
+			p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
+			product.Update(&p)
+		}
+
 		if c.R.Method == "DELETE" {
 			product.Delete(c.Params["id"])
 		}
