@@ -7,18 +7,19 @@ import (
 )
 
 func New() mux {
-	table := make(map[string][]route)
-	return mux{table}
+	return mux{make(map[string][]route)}
 }
+
+type Handler func(*Context)
 
 type route struct {
 	pattern  string
 	captures []string
-	handler  func(*Context)
+	handler  Handler
 }
 
 type mux struct {
-	Table map[string][]route
+	table map[string][]route
 }
 
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -36,50 +37,55 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	routes, ok := m.Table[r.Method]
+	routes, ok := m.table[r.Method]
 	if !ok {
 		return
 	}
 
+	var handler Handler
 	for _, route := range routes {
 		if route.pattern == r.URL.Path {
-			route.handler(context)
-			return
+			handler = route.handler
+			break
 		}
 
 		re := regexp.MustCompile(route.pattern)
 		matches := re.FindAllStringSubmatch(r.URL.Path, -1)
 
-		if len(matches) > 0 && len(matches[0]) > 1 {
+		if len(matches) > 0 {
 			for i, name := range route.captures {
 				context.Params[name] = matches[0][i+1]
 			}
 
-			route.handler(context)
-			return
+			handler = route.handler
+			break
 		}
+	}
+
+	if handler != nil {
+		handler(context)
 	}
 }
 
 func (m *mux) Add(method, pattern string, handler func(*Context)) {
 	// Initialize method
-	_, ok := m.Table[method]
+	_, ok := m.table[method]
 	if !ok {
-		m.Table[method] = make([]route, 0)
+		m.table[method] = make([]route, 0)
 	}
 
-	re := regexp.MustCompile(":([a-zA-Z0-9_]+)")
+	re := regexp.MustCompile(`:(\w+)`)
 	matches := re.FindAllStringSubmatch(pattern, -1)
 
 	captures := make([]string, 0, len(matches))
 	for _, match := range matches {
 		captures = append(captures, match[1])
 
-		pattern = re.ReplaceAllLiteralString(pattern, "([a-zA-Z0-9_]+)")
+		pattern = re.ReplaceAllLiteralString(pattern, '([^\\/]+)')
 
 	}
 
-	m.Table[method] = append(m.Table[method], route{pattern, captures, handler})
+	m.table[method] = append(m.table[method], route{pattern, captures, handler})
 }
 
 func (m *mux) Get(pattern string, handler func(*Context)) {
@@ -96,6 +102,10 @@ func (m *mux) Put(pattern string, handler func(*Context)) {
 
 func (m *mux) Delete(pattern string, handler func(*Context)) {
 	m.Add("DELETE", pattern, handler)
+}
+
+func (m mux) Table() map[string][]route {
+	return m.table
 }
 
 type Context struct {

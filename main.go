@@ -63,7 +63,7 @@ func main() {
 		c.Render("index", products)
 	})
 
-	for method, routes := range mux.Table {
+	for method, routes := range mux.Table() {
 		fmt.Println("METHOD:", method)
 
 		for _, route := range routes {
