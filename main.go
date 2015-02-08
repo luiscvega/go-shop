@@ -24,7 +24,7 @@ func main() {
 
 	mux := cuba.New()
 
-	mux.Add("PUT", "/products/:id", func(c *cuba.Context) {
+	mux.Put("/products/:id", func(c *cuba.Context) {
 		var p product.Product
 		p.Id, _ = strconv.Atoi(c.Params["id"])
 		p.Name = c.R.FormValue("name")
@@ -34,13 +34,13 @@ func main() {
 		c.Redirect("/")
 	})
 
-	mux.Add("DELETE", "/products/:id", func(c *cuba.Context) {
+	mux.Delete("/products/:id", func(c *cuba.Context) {
 		product.Delete(c.Params["id"])
 
 		c.Redirect("/")
 	})
 
-	mux.Add("POST", "/products", func(c *cuba.Context) {
+	mux.Post("/products", func(c *cuba.Context) {
 		var p product.Product
 		p.Name = c.R.FormValue("name")
 		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
@@ -49,7 +49,7 @@ func main() {
 		c.Redirect("/")
 	})
 
-	mux.Add("GET", "/", func(c *cuba.Context) {
+	mux.Get("/", func(c *cuba.Context) {
 		products, err := product.All()
 		if err != nil {
 			panic(err)

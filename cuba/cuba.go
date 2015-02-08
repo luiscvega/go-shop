@@ -26,17 +26,7 @@ type mux struct {
 	Context *Context
 
 	patterns []string
-	table   map[string]map[string]route
-}
-
-type Context struct {
-	W      http.ResponseWriter
-	R      *http.Request
-	Params map[string]string
-}
-
-func (c Context) Redirect(url string) {
-	http.Redirect(c.W, c.R, url, http.StatusFound)
+	table    map[string]map[string]route
 }
 
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -90,6 +80,22 @@ func (m *mux) Add(method, pattern string, handler func(*Context)) {
 	m.table[method][pattern] = route{captures, handler}
 }
 
+func (m *mux) Get(pattern string, handler func(*Context)) {
+	m.Add("GET", pattern, handler)
+}
+
+func (m *mux) Post(pattern string, handler func(*Context)) {
+	m.Add("POST", pattern, handler)
+}
+
+func (m *mux) Put(pattern string, handler func(*Context)) {
+	m.Add("PUT", pattern, handler)
+}
+
+func (m *mux) Delete(pattern string, handler func(*Context)) {
+	m.Add("DELETE", pattern, handler)
+}
+
 func prepareHandler(pattern string) (string, []string) {
 	re := regexp.MustCompile(":[a-zA-Z0-9]+")
 
@@ -101,4 +107,14 @@ func prepareHandler(pattern string) (string, []string) {
 	pattern = re.ReplaceAllLiteralString(pattern, "([a-zA-Z0-9]+)")
 
 	return pattern, captures
+}
+
+type Context struct {
+	W      http.ResponseWriter
+	R      *http.Request
+	Params map[string]string
+}
+
+func (c Context) Redirect(url string) {
+	http.Redirect(c.W, c.R, url, http.StatusFound)
 }
