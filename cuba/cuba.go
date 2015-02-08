@@ -18,8 +18,8 @@ func New() mux {
 }
 
 type route struct {
-	names   []string
-	handler func(*Context)
+	captures []string
+	handler  func(*Context)
 }
 
 type mux struct {
@@ -62,7 +62,7 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if len(matches) > 0 && len(matches[0]) > 1 {
 			route := m.routes[pattern]
 
-			for i, name := range route.names {
+			for i, name := range route.captures {
 				m.Context.Params[name] = matches[0][i+1]
 			}
 
@@ -73,21 +73,21 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *mux) Add(pattern string, handler func(*Context)) {
-	pattern, names := prepareHandler(pattern)
+	pattern, captures := prepareHandler(pattern)
 
 	m.patterns = append(m.patterns, pattern)
-	m.routes[pattern] = route{names, handler}
+	m.routes[pattern] = route{captures, handler}
 }
 
 func prepareHandler(pattern string) (string, []string) {
 	re := regexp.MustCompile(":[a-zA-Z0-9]+")
 
-	names := make([]string, 0)
+	captures := make([]string, 0)
 	for _, match := range re.FindAllStringSubmatch(pattern, -1) {
-		names = append(names, strings.Replace(match[0], ":", "", 1))
+		captures = append(captures, strings.Replace(match[0], ":", "", 1))
 	}
 
 	pattern = re.ReplaceAllLiteralString(pattern, "([a-zA-Z0-9]+)")
 
-	return pattern, names
+	return pattern, captures
 }
