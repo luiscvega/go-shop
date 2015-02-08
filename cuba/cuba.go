@@ -69,9 +69,17 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *mux) Add(method, pattern string, handler func(*Context)) {
-	pattern, captures := prepareHandler(pattern)
+	re := regexp.MustCompile(":[a-zA-Z0-9]+")
+
+	captures := make([]string, 0)
+	for _, match := range re.FindAllStringSubmatch(pattern, -1) {
+		captures = append(captures, strings.Replace(match[0], ":", "", 1))
+	}
+
+	pattern = re.ReplaceAllLiteralString(pattern, "([a-zA-Z0-9]+)")
 
 	m.patterns = append(m.patterns, pattern)
+
 	_, ok := m.table[method]
 	if !ok {
 		m.table[method] = make(map[string]route)
@@ -94,19 +102,6 @@ func (m *mux) Put(pattern string, handler func(*Context)) {
 
 func (m *mux) Delete(pattern string, handler func(*Context)) {
 	m.Add("DELETE", pattern, handler)
-}
-
-func prepareHandler(pattern string) (string, []string) {
-	re := regexp.MustCompile(":[a-zA-Z0-9]+")
-
-	captures := make([]string, 0)
-	for _, match := range re.FindAllStringSubmatch(pattern, -1) {
-		captures = append(captures, strings.Replace(match[0], ":", "", 1))
-	}
-
-	pattern = re.ReplaceAllLiteralString(pattern, "([a-zA-Z0-9]+)")
-
-	return pattern, captures
 }
 
 type Context struct {
