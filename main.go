@@ -48,8 +48,10 @@ func main() {
 		c.Redirect("/")
 	})
 
-	mux.Get("/about/:name", func(c *cuba.Context) {
-		c.Render("about", map[string]string{"Name": c.Params["name"]})
+	mux.Get("/about/:first_name/boom/:last_name", func(c *cuba.Context) {
+		c.Render("about", map[string]string{
+			"FirstName": c.Params["first_name"],
+			"LastName":  c.Params["last_name"]})
 	})
 
 	mux.Get("/", func(c *cuba.Context) {

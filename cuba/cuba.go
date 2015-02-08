@@ -61,28 +61,25 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (m *mux) Add(method, path string, handler func(*Context)) {
+func (m *mux) Add(method, pattern string, handler func(*Context)) {
 	// Initialize method
 	_, ok := m.Table[method]
 	if !ok {
 		m.Table[method] = make([]route, 0)
 	}
 
-	re := regexp.MustCompile(":([a-zA-Z0-9]+)")
-	matches := re.FindAllStringSubmatch(path, -1)
+	re := regexp.MustCompile(":([a-zA-Z0-9_]+)")
+	matches := re.FindAllStringSubmatch(pattern, -1)
 
+	captures := make([]string, 0, len(matches))
 	for _, match := range matches {
-		captures := make([]string, 0, len(matches))
 		captures = append(captures, match[1])
 
-		pattern := re.ReplaceAllLiteralString(path, "([a-zA-Z0-9]+)")
+		pattern = re.ReplaceAllLiteralString(pattern, "([a-zA-Z0-9_]+)")
 
-		m.Table[method] = append(m.Table[method], route{pattern, captures, handler})
-
-		return
 	}
 
-	m.Table[method] = append(m.Table[method], route{path, nil, handler})
+	m.Table[method] = append(m.Table[method], route{pattern, captures, handler})
 }
 
 func (m *mux) Get(pattern string, handler func(*Context)) {
