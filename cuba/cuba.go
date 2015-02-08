@@ -35,6 +35,10 @@ type Context struct {
 	Params map[string]string
 }
 
+func (c Context) Redirect(url string) {
+	http.Redirect(c.W, c.R, url, http.StatusFound)
+}
+
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.Context.W = w
 	m.Context.R = r

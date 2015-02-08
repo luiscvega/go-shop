@@ -31,13 +31,13 @@ func main() {
 		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
 		product.Update(&p)
 
-		http.Redirect(c.W, c.R, "/", http.StatusFound)
+		c.Redirect("/")
 	})
 
 	mux.Add("DELETE", "/products/:id", func(c *cuba.Context) {
 		product.Delete(c.Params["id"])
 
-		http.Redirect(c.W, c.R, "/", http.StatusFound)
+		c.Redirect("/")
 	})
 
 	mux.Add("POST", "/products", func(c *cuba.Context) {
@@ -46,7 +46,7 @@ func main() {
 		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
 		product.Create(&p)
 
-		http.Redirect(c.W, c.R, "/", http.StatusFound)
+		c.Redirect("/")
 	})
 
 	mux.Add("GET", "/", func(c *cuba.Context) {
