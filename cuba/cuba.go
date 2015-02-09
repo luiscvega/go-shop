@@ -1,7 +1,6 @@
 package cuba
 
 import (
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -128,6 +127,6 @@ func (c Context) Redirect(url string) {
 }
 
 func (c Context) Render(view string, locals interface{}) {
-	tmpl := template.Must(template.ParseFiles("views/" + view + ".html"))
-	tmpl.ExecuteTemplate(c.W, view+".html", locals)
+	tmpl := template.Must(template.ParseFiles("views/layout.html", "views/"+view+".html"))
+	tmpl.ExecuteTemplate(c.W, "layout.html", locals)
 }

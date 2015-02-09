@@ -16,8 +16,8 @@ import (
 
 func ServeStaticFiles(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		isMatch, _ := regexp.MatchString("^/public/", r.URL.Path)
-		if isMatch {
+		matched, _ := regexp.MatchString("^/public/(css)", r.URL.Path)
+		if matched {
 			http.StripPrefix("/public/", http.FileServer(http.Dir("public"))).ServeHTTP(w, r)
 			return
 		}
