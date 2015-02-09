@@ -10,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"./cuba"
+	"./chain"
 	"./models/product"
 )
 
@@ -37,10 +38,8 @@ func main() {
 	}
 	defer product.DB.Close()
 
-	mux := cuba.New()
 
-	mux.Use(RequestLogger)
-	mux.Use(TimeLogger)
+	mux := cuba.New()
 
 	mux.Put("/products/:id", func(c *cuba.Context) {
 		var p product.Product
@@ -82,16 +81,11 @@ func main() {
 		c.Render("index", products)
 	})
 
-	//for method, routes := range mux.Table() {
-	//fmt.Println("METHOD:", method)
+	c := chain.New(mux)
 
-	//for _, route := range routes {
-	//fmt.Println(route)
-	//}
-
-	//fmt.Println("=====================================================================================")
-	//}
+	c.Use(RequestLogger)
+	c.Use(TimeLogger)
 
 	fmt.Println("Starting...")
-	http.ListenAndServe(":8080", mux)
+	http.ListenAndServe(":8080", c)
 }

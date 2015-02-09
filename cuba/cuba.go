@@ -4,10 +4,11 @@ import (
 	"html/template"
 	"net/http"
 	"regexp"
+
 )
 
 func New() mux {
-	return mux{make(map[string][]route), nil}
+	return mux{make(map[string][]route)}
 }
 
 type Handler func(*Context)
@@ -20,22 +21,9 @@ type route struct {
 
 type mux struct {
 	table map[string][]route
-	final http.Handler
-}
-
-func (m *mux) Use(mw func(http.Handler) http.Handler) {
-	if m.final == nil {
-		m.final = http.HandlerFunc(m.run)
-	}
-
-	m.final = mw(m.final)
 }
 
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	m.final.ServeHTTP(w, r)
-}
-
-func (m mux) run(w http.ResponseWriter, r *http.Request) {
 	context := &Context{w, r, make(map[string]string)}
 
 	if r.Method == "POST" {
