@@ -1,39 +1,72 @@
-<h1>Create a product</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bootstrap 101 Template</title>
 
-<form action="/products" method="POST">
-  <input type="text" name="name" value="Luis' Laptop"/>
+<!-- Bootstrap -->
+<link href="/public/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+<!--[if lt IE 9]>
+
+                                          <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+                                                <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+                                                    <![endif]-->
+</head>
+<body>
+<div class="container">
+  <h1>Create a product</h1>
+
+  <form action="/products" method="POST" class="form-inline">
+    <div class="form-group">
+      <label for="exampleInputName2">Name</label>
+      <input type="text" name="name" class="form-control" value="Luis' Laptop"/>
+    </div>
+    <div class="form-group">
+      <label for="exampleInputEmail2">Email</label>
+      <input type="text" class="form-control" name="price" value="300" />
+    </div>
+
+    <button class="btn btn-default">Create</button>
+  </form>
+
   <br />
-  <input type="text" name="price" value="300" />
-  <button>Create</button>
-</form>
 
-<table>
-  <tr>
-    <th>ID</th>
-    <th>Name</th>
-    <th>Price</th>
-    <th></th>
-    <th></th>
-  </tr>
+  <table class="table">
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Price</th>
+      <th></th>
+      <th></th>
+    </tr>
 
-  {{ range . }}
-  <tr>
-    <td>{{ .Id }}</td>
-    <form action="/products/{{ .Id }}" method="POST">
-      <input type="hidden" name="_method" value="PUT">
-
-      <td><input type="text" name="name" value="{{ .Name }}" /></td>
-      <td><input type="text" name="price" value="{{ .Price }}" /></td>
-      <td><button>Update</button></td>
-    </form>
-    <td>
+    {{ range . }}
+    <tr>
+      <td>{{ .Id }}</td>
       <form action="/products/{{ .Id }}" method="POST">
-        <input type="hidden" name="_method" value="DELETE">
+        <input type="hidden" name="_method" value="PUT">
 
-        <button>Delete</button>
+        <td><input type="text" name="name" class="form-control" value="{{ .Name }}" /></td>
+        <td><input type="text" name="price" class="form-control" value="{{ .Price }}" /></td>
+        <td><button class="btn btn-default">Update</button></td>
       </form>
-    </td>
-  </tr>
-  {{ end }}
+      <td>
+        <form action="/products/{{ .Id }}" method="POST">
+          <input type="hidden" name="_method" value="DELETE">
 
-</table>
+          <button class="btn btn-default">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {{ end }}
+
+  </table>
+</div>
+</body>
+</html>
+

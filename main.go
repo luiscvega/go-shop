@@ -4,27 +4,23 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
-	"time"
 
 	_ "github.com/lib/pq"
 
-	"./cuba"
 	"./chain"
+	"./cuba"
 	"./models/product"
 )
 
-func RequestLogger(h http.Handler) http.Handler {
+func ServeStaticFiles(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("PATH:", r.URL.Path)
-
-		h.ServeHTTP(w, r)
-	})
-}
-
-func TimeLogger(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("TIME:", time.Now())
+		isMatch, _ := regexp.MatchString("^/public/", r.URL.Path)
+		if isMatch {
+			http.StripPrefix("/public/", http.FileServer(http.Dir("public"))).ServeHTTP(w, r)
+			return
+		}
 
 		h.ServeHTTP(w, r)
 	})
@@ -37,7 +33,6 @@ func main() {
 		panic(err)
 	}
 	defer product.DB.Close()
-
 
 	mux := cuba.New()
 
@@ -82,9 +77,7 @@ func main() {
 	})
 
 	c := chain.New(mux)
-
-	c.Use(RequestLogger)
-	c.Use(TimeLogger)
+	c.Use(ServeStaticFiles)
 
 	fmt.Println("Starting...")
 	http.ListenAndServe(":8080", c)
