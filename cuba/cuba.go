@@ -1,17 +1,18 @@
 package cuba
 
 import (
+	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"regexp"
-
 )
 
 func New() mux {
 	return mux{make(map[string][]route)}
 }
 
-type Handler func(*Context)
+type Handler func(*Context) error
 
 type route struct {
 	pattern  string
@@ -50,6 +51,10 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
+		if route.pattern == "/" {
+			return
+		}
+
 		re := regexp.MustCompile(route.pattern)
 		matches := re.FindAllStringSubmatch(r.URL.Path, -1)
 
@@ -64,11 +69,14 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if handler != nil {
-		handler(context)
+		err := handler(context)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }
 
-func (m *mux) Add(method, pattern string, handler func(*Context)) {
+func (m *mux) Add(method, pattern string, handler func(*Context) error) {
 	// Initialize method
 	_, ok := m.table[method]
 	if !ok {
@@ -89,19 +97,19 @@ func (m *mux) Add(method, pattern string, handler func(*Context)) {
 	m.table[method] = append(m.table[method], route{pattern, captures, handler})
 }
 
-func (m *mux) Get(pattern string, handler func(*Context)) {
+func (m *mux) Get(pattern string, handler func(*Context) error) {
 	m.Add("GET", pattern, handler)
 }
 
-func (m *mux) Post(pattern string, handler func(*Context)) {
+func (m *mux) Post(pattern string, handler func(*Context) error) {
 	m.Add("POST", pattern, handler)
 }
 
-func (m *mux) Put(pattern string, handler func(*Context)) {
+func (m *mux) Put(pattern string, handler func(*Context) error) {
 	m.Add("PUT", pattern, handler)
 }
 
-func (m *mux) Delete(pattern string, handler func(*Context)) {
+func (m *mux) Delete(pattern string, handler func(*Context) error) {
 	m.Add("DELETE", pattern, handler)
 }
 

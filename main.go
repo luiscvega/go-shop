@@ -36,7 +36,7 @@ func main() {
 
 	mux := cuba.New()
 
-	mux.Put("/products/:id", func(c *cuba.Context) {
+	mux.Put("/products/:id", func(c *cuba.Context) error {
 		var p product.Product
 		p.Id, _ = strconv.Atoi(c.Params["id"])
 		p.Name = c.R.FormValue("name")
@@ -44,36 +44,46 @@ func main() {
 		product.Update(&p)
 
 		c.Redirect("/")
+
+		return nil
 	})
 
-	mux.Delete("/products/:id", func(c *cuba.Context) {
+	mux.Delete("/products/:id", func(c *cuba.Context) error {
 		product.Delete(c.Params["id"])
 
 		c.Redirect("/")
+
+		return nil
 	})
 
-	mux.Post("/products", func(c *cuba.Context) {
+	mux.Post("/products", func(c *cuba.Context) error {
 		var p product.Product
 		p.Name = c.R.FormValue("name")
 		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
 		product.Create(&p)
 
 		c.Redirect("/")
+
+		return nil
 	})
 
-	mux.Get("/about/:first_name/boom/:last_name", func(c *cuba.Context) {
+	mux.Get("/about/:first_name/boom/:last_name", func(c *cuba.Context) error {
 		c.Render("about", map[string]string{
 			"FirstName": c.Params["first_name"],
 			"LastName":  c.Params["last_name"]})
+
+		return nil
 	})
 
-	mux.Get("/", func(c *cuba.Context) {
+	mux.Get("/", func(c *cuba.Context) error {
 		products, err := product.All()
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		c.Render("index", products)
+
+		return nil
 	})
 
 	c := chain.New(mux)
