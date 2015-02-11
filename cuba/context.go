@@ -1,14 +1,15 @@
 package cuba
 
 import (
-	"net/http"
 	"html/template"
+	"net/http"
 )
 
 type Context struct {
-	W      http.ResponseWriter
-	R      *http.Request
-	Params map[string]string
+	W        http.ResponseWriter
+	R        *http.Request
+	Params   map[string]string
+	PathInfo string
 }
 
 func (c Context) Redirect(url string) {

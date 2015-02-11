@@ -7,7 +7,7 @@ import (
 type Handler func(*Context) error
 
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	context := &Context{w, r, make(map[string]string)}
+	context := &Context{w, r, make(map[string]string), r.URL.Path}
 
 	h.serveContext(context)
 }

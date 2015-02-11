@@ -54,6 +54,17 @@ func main() {
 
 	mux := cuba.New()
 
+	mux.Get("/products", func(c *cuba.Context) error {
+		products, err := product.All()
+		if err != nil {
+			return err
+		}
+
+		c.Render("products/index", products)
+
+		return nil
+	})
+
 	mux.Get("/products/:id", func(c *cuba.Context) error {
 		var p product.Product
 		p.Id, _ = strconv.Atoi(c.Params["id"])
@@ -110,7 +121,7 @@ func main() {
 
 	aboutMux := cuba.New()
 
-	aboutMux.Get("/about/", func(c *cuba.Context) error {
+	aboutMux.Get("/new", func(c *cuba.Context) error {
 		c.Render("about", nil)
 
 		return nil
@@ -119,12 +130,7 @@ func main() {
 	mux.On("/about", aboutMux)
 
 	mux.Get("/", func(c *cuba.Context) error {
-		products, err := product.All()
-		if err != nil {
-			return err
-		}
-
-		c.Render("index", products)
+		c.Render("index", nil)
 
 		return nil
 	})

@@ -10,10 +10,9 @@ func New() mux {
 }
 
 type route struct {
-	method   string
-	pattern  string
-	captures []string
-	handler  ContextHandler
+	method  string
+	pattern string
+	handler ContextHandler
 }
 
 type mux struct {
@@ -21,38 +20,43 @@ type mux struct {
 }
 
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	context := &Context{w, r, make(map[string]string)}
+	if r.URL.Path == "/favicon.ico" {
+		return
+	}
+
+	context := &Context{w, r, make(map[string]string), r.URL.Path}
 
 	m.serveContext(context)
 }
 
 func (m mux) serveContext(c *Context) error {
-	if c.R.URL.Path == "/favicon.ico" {
-		return nil
-	}
-
 	for _, route := range m.routes {
-		if route.method != c.R.Method {
+		if c.R.Method != route.method {
 			continue
 		}
 
-		if route.pattern == c.R.URL.Path {
+		if c.PathInfo == route.pattern {
 			route.handler.serveContext(c)
 			break
 		}
 
-		if route.pattern == "/" {
-			return nil
-		}
-
-		re := regexp.MustCompile(route.pattern)
-		matches := re.FindAllStringSubmatch(c.R.URL.Path, -1)
+		re := regexp.MustCompile(`:(\w+)`)
+		matches := re.FindAllStringSubmatch(route.pattern, -1)
 
 		if len(matches) > 0 {
-			for i, name := range route.captures {
-				c.Params[name] = matches[0][i+1]
-			}
+			route.pattern = re.ReplaceAllLiteralString(route.pattern, "([^\\/]+)")
 
+			re = regexp.MustCompile(route.pattern)
+			values := re.FindAllStringSubmatch(c.PathInfo, -1)
+
+			for i, value := range values {
+				c.Params[matches[i][1]] = value[1]
+			}
+		}
+
+		match := regexp.MustCompile(route.pattern).FindString(c.PathInfo)
+		if len(match) > 0 {
+			c.PathInfo = c.PathInfo[len(match):]
 			route.handler.serveContext(c)
 			break
 		}
@@ -62,35 +66,11 @@ func (m mux) serveContext(c *Context) error {
 }
 
 func (m *mux) On(pattern string, nmux mux) {
-	method := "GET"
-
-	re := regexp.MustCompile(`:(\w+)`)
-	matches := re.FindAllStringSubmatch(pattern, -1)
-
-	captures := make([]string, 0, len(matches))
-	for _, match := range matches {
-		captures = append(captures, match[1])
-
-		pattern = re.ReplaceAllLiteralString(pattern, "([^\\/]+)")
-
-	}
-
-	m.routes = append(m.routes, route{method, pattern, captures, nmux})
+	m.routes = append(m.routes, route{"GET", pattern, nmux})
 }
 
 func (m *mux) Add(method, pattern string, handler func(*Context) error) {
-	re := regexp.MustCompile(`:(\w+)`)
-	matches := re.FindAllStringSubmatch(pattern, -1)
-
-	captures := make([]string, 0, len(matches))
-	for _, match := range matches {
-		captures = append(captures, match[1])
-
-		pattern = re.ReplaceAllLiteralString(pattern, "([^\\/]+)")
-
-	}
-
-	m.routes = append(m.routes, route{method, pattern, captures, Handler(handler)})
+	m.routes = append(m.routes, route{method, pattern, Handler(handler)})
 }
 
 func (m *mux) Get(pattern string, handler Handler) {
