@@ -90,6 +90,16 @@ func main() {
 		return nil
 	})
 
+
+	aboutMux := cuba.New()
+
+	aboutMux.Get("/about/", func(c *cuba.Context) error {
+		c.W.Write([]byte("About page!"))
+		return nil
+	})
+
+	mux.On("/about", aboutMux)
+
 	mux.Get("/", func(c *cuba.Context) error {
 		products, err := product.All()
 		if err != nil {
@@ -101,14 +111,11 @@ func main() {
 		return nil
 	})
 
-	aboutMux := cuba.New()
-
-	aboutMux.Get("/about/", func(c *cuba.Context) error {
-		c.W.Write([]byte("About page!"))
-		return nil
-	})
-
-	mux.On("/about", aboutMux)
+	for method, routes := range mux.Table() {
+		fmt.Println(method)
+		fmt.Println(routes)
+		fmt.Println("=================================")
+	}
 
 	c := chain.New(mux)
 	c.Use(ServeStaticFiles)
