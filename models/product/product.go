@@ -14,6 +14,15 @@ type Product struct {
 	Price int    `column:"price"`
 }
 
+func Fetch(p *Product) error {
+	err := model.Fetch("products", p, DB)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func All() ([]Product, error) {
 	products := make([]Product, 0)
 

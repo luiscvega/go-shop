@@ -39,10 +39,13 @@ func main() {
 	mux.Get("/products/:id", func(c *cuba.Context) error {
 		var p product.Product
 		p.Id, _ = strconv.Atoi(c.Params["id"])
-		p.Name = c.R.FormValue("name")
-		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
 
-		c.Redirect("/")
+		err := product.Fetch(&p)
+		if err != nil {
+			return err
+		}
+
+		c.Render("products/show", p)
 
 		return nil
 	})
@@ -57,7 +60,6 @@ func main() {
 		if err != nil {
 			return err
 		}
-
 
 		c.Redirect("/")
 
@@ -77,9 +79,13 @@ func main() {
 		var p product.Product
 		p.Name = c.R.FormValue("name")
 		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
-		product.Create(&p)
 
-		c.Redirect("/")
+		err := product.Create(&p)
+		if err != nil {
+			return err
+		}
+
+		c.Render("products/show", p)
 
 		return nil
 	})

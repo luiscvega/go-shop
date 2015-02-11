@@ -28,7 +28,7 @@
 
     {{ range . }}
     <tr>
-      <td>{{ .Id }}</td>
+      <td><a href="/products/{{ .Id }}">{{ .Id }}</a></td>
       <form action="/products/{{ .Id }}" method="POST">
         <input type="hidden" name="_method" value="PUT">
 
