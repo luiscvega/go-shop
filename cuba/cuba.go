@@ -28,18 +28,6 @@ type mux struct {
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	context := &Context{w, r, make(map[string]string)}
 
-	if r.Method == "POST" {
-		r.ParseForm()
-
-		if r.FormValue("_method") == "PUT" {
-			r.Method = "PUT"
-		}
-
-		if r.FormValue("_method") == "DELETE" {
-			r.Method = "DELETE"
-		}
-	}
-
 	routes, ok := m.table[r.Method]
 	if !ok {
 		return

@@ -26,6 +26,24 @@ func ServeStaticFiles(h http.Handler) http.Handler {
 	})
 }
 
+func MethodOverride(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			r.ParseForm()
+
+			if r.FormValue("_method") == "PUT" {
+				r.Method = "PUT"
+			}
+
+			if r.FormValue("_method") == "DELETE" {
+				r.Method = "DELETE"
+			}
+		}
+
+		h.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	var err error
 	product.DB, err = sql.Open("postgres", "dbname=shop")
@@ -85,11 +103,10 @@ func main() {
 			return err
 		}
 
-		c.Render("products/show", p)
+		c.Redirect(fmt.Sprintf("/products/%d", p.Id))
 
 		return nil
 	})
-
 
 	aboutMux := cuba.New()
 
@@ -119,6 +136,7 @@ func main() {
 
 	c := chain.New(mux)
 	c.Use(ServeStaticFiles)
+	c.Use(MethodOverride)
 
 	fmt.Println("Starting...")
 	http.ListenAndServe(":8080", c)
