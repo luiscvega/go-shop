@@ -1,24 +1,12 @@
 package cuba
 
 import (
-	"html/template"
 	"net/http"
 	"regexp"
 )
 
 func New() mux {
 	return mux{make(map[string][]route)}
-}
-
-type Handler func(*Context) error
-
-func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-}
-
-type route struct {
-	pattern  string
-	captures []string
-	handler  http.Handler
 }
 
 type mux struct {
@@ -28,48 +16,39 @@ type mux struct {
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	context := &Context{w, r, make(map[string]string)}
 
-	routes, ok := m.table[r.Method]
+	m.serveContext(context)
+}
+
+func (m mux) serveContext(c *Context) error {
+	routes, ok := m.table[c.R.Method]
 	if !ok {
-		return
+		return nil
 	}
 
-	var httpHandler http.Handler
 	for _, route := range routes {
-		if route.pattern == r.URL.Path {
-			switch route.handler.(type) {
-			case Handler:
-				route.handler.(Handler)(context)
-			case mux:
-				route.handler.(mux).ServeHTTP(w, r)
-			}
+		if route.pattern == c.R.URL.Path {
+			route.handler.serveContext(c)
 			break
 		}
 
 		if route.pattern == "/" {
-			return
+			return nil
 		}
 
 		re := regexp.MustCompile(route.pattern)
-		matches := re.FindAllStringSubmatch(r.URL.Path, -1)
+		matches := re.FindAllStringSubmatch(c.R.URL.Path, -1)
 
 		if len(matches) > 0 {
 			for i, name := range route.captures {
-				context.Params[name] = matches[0][i+1]
+				c.Params[name] = matches[0][i+1]
 			}
 
-			switch route.handler.(type) {
-			case Handler:
-				route.handler.(Handler)(context)
-			case mux:
-				route.handler.(mux).ServeHTTP(w, r)
-			}
+			route.handler.serveContext(c)
 			break
 		}
 	}
 
-	if httpHandler != nil {
-		httpHandler.ServeHTTP(w, r)
-	}
+	return nil
 }
 
 func (m *mux) On(pattern string, nmux mux) {
@@ -134,19 +113,4 @@ func (m *mux) Delete(pattern string, handler Handler) {
 
 func (m mux) Table() map[string][]route {
 	return m.table
-}
-
-type Context struct {
-	W      http.ResponseWriter
-	R      *http.Request
-	Params map[string]string
-}
-
-func (c Context) Redirect(url string) {
-	http.Redirect(c.W, c.R, url, http.StatusFound)
-}
-
-func (c Context) Render(view string, locals interface{}) {
-	tmpl := template.Must(template.ParseFiles("views/layout.html", "views/"+view+".html"))
-	tmpl.ExecuteTemplate(c.W, "layout.html", locals)
 }

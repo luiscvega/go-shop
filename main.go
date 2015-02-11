@@ -111,7 +111,8 @@ func main() {
 	aboutMux := cuba.New()
 
 	aboutMux.Get("/about/", func(c *cuba.Context) error {
-		c.W.Write([]byte("About page!"))
+		c.Render("about", nil)
+
 		return nil
 	})
 
