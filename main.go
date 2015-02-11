@@ -36,12 +36,28 @@ func main() {
 
 	mux := cuba.New()
 
+	mux.Get("/products/:id", func(c *cuba.Context) error {
+		var p product.Product
+		p.Id, _ = strconv.Atoi(c.Params["id"])
+		p.Name = c.R.FormValue("name")
+		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
+
+		c.Redirect("/")
+
+		return nil
+	})
+
 	mux.Put("/products/:id", func(c *cuba.Context) error {
 		var p product.Product
 		p.Id, _ = strconv.Atoi(c.Params["id"])
 		p.Name = c.R.FormValue("name")
 		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
-		product.Update(&p)
+
+		err := product.Update(p)
+		if err != nil {
+			return err
+		}
+
 
 		c.Redirect("/")
 
@@ -49,7 +65,8 @@ func main() {
 	})
 
 	mux.Delete("/products/:id", func(c *cuba.Context) error {
-		product.Delete(c.Params["id"])
+		id, _ := strconv.Atoi(c.Params["id"])
+		product.Delete(id)
 
 		c.Redirect("/")
 

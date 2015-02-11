@@ -36,8 +36,8 @@ func Create(p *Product) error {
 	return nil
 }
 
-func Update(p *Product) error {
-	err := model.Update("products", *p, DB)
+func Update(p Product) error {
+	err := model.Update("products", p, DB)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func Update(p *Product) error {
 	return nil
 }
 
-func Delete(id string) error {
+func Delete(id int) error {
 	err := model.Delete("products", id, DB)
 	if err != nil {
 		return err
