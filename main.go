@@ -90,14 +90,6 @@ func main() {
 		return nil
 	})
 
-	mux.Get("/about/:first_name/boom/:last_name", func(c *cuba.Context) error {
-		c.Render("about", map[string]string{
-			"FirstName": c.Params["first_name"],
-			"LastName":  c.Params["last_name"]})
-
-		return nil
-	})
-
 	mux.Get("/", func(c *cuba.Context) error {
 		products, err := product.All()
 		if err != nil {
@@ -108,6 +100,15 @@ func main() {
 
 		return nil
 	})
+
+	aboutMux := cuba.New()
+
+	aboutMux.Get("/about/", func(c *cuba.Context) error {
+		c.W.Write([]byte("About page!"))
+		return nil
+	})
+
+	mux.On("/about", aboutMux)
 
 	c := chain.New(mux)
 	c.Use(ServeStaticFiles)
