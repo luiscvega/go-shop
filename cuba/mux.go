@@ -6,11 +6,18 @@ import (
 )
 
 func New() mux {
-	return mux{make(map[string][]route)}
+	return mux{make([]route, 0)}
+}
+
+type route struct {
+	method   string
+	pattern  string
+	captures []string
+	handler  ContextHandler
 }
 
 type mux struct {
-	table map[string][]route
+	routes []route
 }
 
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -20,12 +27,15 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m mux) serveContext(c *Context) error {
-	routes, ok := m.table[c.R.Method]
-	if !ok {
+	if c.R.URL.Path == "/favicon.ico" {
 		return nil
 	}
 
-	for _, route := range routes {
+	for _, route := range m.routes {
+		if route.method != c.R.Method {
+			continue
+		}
+
 		if route.pattern == c.R.URL.Path {
 			route.handler.serveContext(c)
 			break
@@ -54,12 +64,6 @@ func (m mux) serveContext(c *Context) error {
 func (m *mux) On(pattern string, nmux mux) {
 	method := "GET"
 
-	// Initialize method
-	_, ok := m.table[method]
-	if !ok {
-		m.table[method] = make([]route, 0)
-	}
-
 	re := regexp.MustCompile(`:(\w+)`)
 	matches := re.FindAllStringSubmatch(pattern, -1)
 
@@ -71,16 +75,10 @@ func (m *mux) On(pattern string, nmux mux) {
 
 	}
 
-	m.table[method] = append(m.table[method], route{pattern, captures, nmux})
+	m.routes = append(m.routes, route{method, pattern, captures, nmux})
 }
 
 func (m *mux) Add(method, pattern string, handler func(*Context) error) {
-	// Initialize method
-	_, ok := m.table[method]
-	if !ok {
-		m.table[method] = make([]route, 0)
-	}
-
 	re := regexp.MustCompile(`:(\w+)`)
 	matches := re.FindAllStringSubmatch(pattern, -1)
 
@@ -92,7 +90,7 @@ func (m *mux) Add(method, pattern string, handler func(*Context) error) {
 
 	}
 
-	m.table[method] = append(m.table[method], route{pattern, captures, Handler(handler)})
+	m.routes = append(m.routes, route{method, pattern, captures, Handler(handler)})
 }
 
 func (m *mux) Get(pattern string, handler Handler) {
@@ -111,6 +109,6 @@ func (m *mux) Delete(pattern string, handler Handler) {
 	m.Add("DELETE", pattern, handler)
 }
 
-func (m mux) Table() map[string][]route {
-	return m.table
+func (m mux) Routes() []route {
+	return m.routes
 }

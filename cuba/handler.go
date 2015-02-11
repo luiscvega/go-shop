@@ -20,10 +20,3 @@ func (h Handler) serveContext(context *Context) error {
 type ContextHandler interface {
 	serveContext(*Context) error
 }
-
-type route struct {
-	pattern  string
-	captures []string
-	handler  ContextHandler
-}
-

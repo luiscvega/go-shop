@@ -129,10 +129,8 @@ func main() {
 		return nil
 	})
 
-	for method, routes := range mux.Table() {
-		fmt.Println(method)
+	for _, routes := range mux.Routes() {
 		fmt.Println(routes)
-		fmt.Println("=================================")
 	}
 
 	c := chain.New(mux)
