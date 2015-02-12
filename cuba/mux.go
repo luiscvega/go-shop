@@ -44,6 +44,10 @@ func (m mux) serveContext(c *Context) error {
 			break
 		}
 
+		if route.pattern == "/" {
+			return nil
+		}
+
 		// Check for captures (e.g. "/products/:id" =~ "/products/123")
 		matches := regexp.MustCompile(route.pattern).FindAllStringSubmatch(c.PathInfo, -1)
 
