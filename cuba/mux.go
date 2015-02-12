@@ -1,6 +1,8 @@
 package cuba
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 )
@@ -26,8 +28,13 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	context := &Context{w, r, make(map[string]string), r.URL.Path}
 
-	m.serveContext(context)
+	err := m.serveContext(context)
+	if err != nil {
+		log.Println(err)
+	}
 }
+
+var re = regexp.MustCompile(`:(\w+)`)
 
 func (m mux) serveContext(c *Context) error {
 	for _, route := range m.routes {
@@ -35,34 +42,63 @@ func (m mux) serveContext(c *Context) error {
 			continue
 		}
 
-		if c.PathInfo == route.pattern {
-			route.handler.serveContext(c)
+		routePath := route.pattern
+
+		if c.PathInfo == routePath {
+			err := route.handler.serveContext(c)
+			if err != nil {
+				return err
+			}
+
 			break
 		}
 
-		re := regexp.MustCompile(`:(\w+)`)
-		matches := re.FindAllStringSubmatch(route.pattern, -1)
+		names := match(&routePath)
 
-		if len(matches) > 0 {
-			route.pattern = re.ReplaceAllLiteralString(route.pattern, "([^\\/]+)")
-
-			re = regexp.MustCompile(route.pattern)
-			values := re.FindAllStringSubmatch(c.PathInfo, -1)
-
-			for i, value := range values {
-				c.Params[matches[i][1]] = value[1]
-			}
+		if len(names) > 0 {
+			c.Params = consume(names, &routePath, c.PathInfo)
 		}
 
-		match := regexp.MustCompile(route.pattern).FindString(c.PathInfo)
+		match := regexp.MustCompile(routePath).FindString(c.PathInfo)
 		if len(match) > 0 {
 			c.PathInfo = c.PathInfo[len(match):]
-			route.handler.serveContext(c)
+			fmt.Println(route)
+
+			err := route.handler.serveContext(c)
+			if err != nil {
+				return err
+			}
 			break
 		}
 	}
 
 	return nil
+}
+
+func match(matcher *string) []string {
+	matches := re.FindAllStringSubmatch(*matcher, -1)
+
+	names := make([]string, len(matches))
+	for i, match := range matches {
+		names[i] = match[1]
+	}
+
+	return names
+}
+
+func consume(names []string, routePath *string, pathInfo string) map[string]string {
+	params := make(map[string]string, len(names))
+
+	*routePath = re.ReplaceAllLiteralString(*routePath, "([^\\/]+)")
+
+	re := regexp.MustCompile(*routePath)
+	values := re.FindAllStringSubmatch(pathInfo, -1)
+
+	for i, value := range values {
+		params[names[i]] = value[1]
+	}
+
+	return params
 }
 
 func (m *mux) On(pattern string, nmux mux) {
