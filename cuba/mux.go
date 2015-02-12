@@ -1,7 +1,6 @@
 package cuba
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -12,9 +11,10 @@ func New() mux {
 }
 
 type route struct {
-	method  string
-	pattern string
-	handler ContextHandler
+	method     string
+	pattern    string
+	paramNames []string
+	handler    ContextHandler
 }
 
 type mux struct {
@@ -22,10 +22,6 @@ type mux struct {
 }
 
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/favicon.ico" {
-		return
-	}
-
 	context := &Context{w, r, make(map[string]string), r.URL.Path}
 
 	err := m.serveContext(context)
@@ -34,65 +30,40 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var re = regexp.MustCompile(`:(\w+)`)
-
 func (m mux) serveContext(c *Context) error {
+	var err error
+
 	for _, route := range m.routes {
 		if c.R.Method != route.method {
 			continue
 		}
 
-		routePath := route.pattern
-
-		if c.PathInfo == routePath {
-			err := route.handler.serveContext(c)
-			if err != nil {
-				return err
-			}
-
+		// Check for exact matches (e.g. "/products/new" == "/products/new")
+		if c.PathInfo == route.pattern {
+			err = route.handler.serveContext(c)
 			break
 		}
 
-		names := match(&routePath)
+		// Check for captures (e.g. "/products/:id" =~ "/products/123")
+		matches := regexp.MustCompile(route.pattern).FindAllStringSubmatch(c.PathInfo, -1)
 
-		if len(names) > 0 {
-			c.Params = consume(names, &routePath, c.PathInfo)
-		}
-
-		match := regexp.MustCompile(routePath).FindString(c.PathInfo)
-		if len(match) > 0 {
-			c.PathInfo = c.PathInfo[len(match):]
-			fmt.Println(route)
-
-			err := route.handler.serveContext(c)
-			if err != nil {
-				return err
+		if len(matches) > 0 {
+			for i, match := range matches {
+				c.Params[route.paramNames[i]] = match[1]
 			}
+
+			err = route.handler.serveContext(c)
 			break
 		}
 	}
 
-	return nil
+	return err
 }
 
-func match(matcher *string) []string {
-	matches := re.FindAllStringSubmatch(*matcher, -1)
-
-	names := make([]string, len(matches))
-	for i, match := range matches {
-		names[i] = match[1]
-	}
-
-	return names
-}
-
-func consume(names []string, routePath *string, pathInfo string) map[string]string {
+func consume(names []string, pattern, pathInfo string) map[string]string {
 	params := make(map[string]string, len(names))
 
-	*routePath = re.ReplaceAllLiteralString(*routePath, "([^\\/]+)")
-
-	re := regexp.MustCompile(*routePath)
-	values := re.FindAllStringSubmatch(pathInfo, -1)
+	values := regexp.MustCompile(pattern).FindAllStringSubmatch(pathInfo, -1)
 
 	for i, value := range values {
 		params[names[i]] = value[1]
@@ -101,12 +72,32 @@ func consume(names []string, routePath *string, pathInfo string) map[string]stri
 	return params
 }
 
+var re = regexp.MustCompile(`:(\w+)`)
+
+func getPatternAndParamNames(pattern string) (string, []string) {
+	matches := re.FindAllStringSubmatch(pattern, -1)
+	paramNames := make([]string, len(matches))
+
+	if len(matches) > 0 {
+		pattern = re.ReplaceAllLiteralString(pattern, "([^\\/]+)")
+
+		for i, match := range matches {
+			paramNames[i] = match[1]
+		}
+	}
+
+	return pattern, paramNames
+}
+
 func (m *mux) On(pattern string, nmux mux) {
-	m.routes = append(m.routes, route{"GET", pattern, nmux})
+	newPattern, paramNames := getPatternAndParamNames(pattern)
+	m.routes = append(m.routes, route{"GET", newPattern, paramNames, nmux})
 }
 
 func (m *mux) Add(method, pattern string, handler func(*Context) error) {
-	m.routes = append(m.routes, route{method, pattern, Handler(handler)})
+	newPattern, paramNames := getPatternAndParamNames(pattern)
+
+	m.routes = append(m.routes, route{method, newPattern, paramNames, Handler(handler)})
 }
 
 func (m *mux) Get(pattern string, handler Handler) {
