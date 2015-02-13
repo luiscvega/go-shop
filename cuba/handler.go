@@ -1,9 +1,21 @@
 package cuba
 
-type Handler func(*Context) error
+import (
+	"fmt"
+)
 
-func (h Handler) serveContext(context *Context) error {
-	err := h(context)
+type MuxHandler func (*Mux)
+
+func (mh MuxHandler) serveContext(context *Context) error {
+	m := New()
+
+	mh(&m)
+
+	for _, routes := range m.Routes() {
+		fmt.Println(routes)
+	}
+
+	err := m.serveContext(context)
 	if err != nil {
 		return err
 	}
@@ -13,4 +25,15 @@ func (h Handler) serveContext(context *Context) error {
 
 type ContextHandler interface {
 	serveContext(*Context) error
+}
+
+type Handler func(*Context) error
+
+func (h Handler) serveContext(context *Context) error {
+	err := h(context)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -1,13 +1,14 @@
 package cuba
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
 )
 
-func New() mux {
-	return mux{make([]route, 0)}
+func New() Mux {
+	return Mux{make([]route, 0)}
 }
 
 type route struct {
@@ -25,12 +26,12 @@ func (r route) isRoot() bool {
 	return false
 }
 
-type mux struct {
+type Mux struct {
 	routes []route
 }
 
-func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	context := &Context{w, r, make(map[string]string), r.URL.Path}
+func (m Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	context := &Context{w, r, make(map[string]string), r.URL.Path[1:]}
 
 	err := m.serveContext(context)
 	if err != nil {
@@ -38,11 +39,13 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (m mux) serveContext(c *Context) error {
+func (m Mux) serveContext(c *Context) error {
 	var err error
 
 	for _, route := range m.routes {
-		if c.R.Method != route.method {
+		fmt.Println(c.R.Method, c.PathInfo, route.pattern, route.method)
+
+		if route.method != "ALL" && c.R.Method != route.method {
 			continue
 		}
 
@@ -60,8 +63,12 @@ func (m mux) serveContext(c *Context) error {
 		matches := regexp.MustCompile(route.pattern).FindAllStringSubmatch(c.PathInfo, -1)
 
 		if len(matches) > 0 {
-			for i, match := range matches {
-				c.Params[route.paramNames[i]] = match[1]
+			fmt.Println(matches)
+
+			if len(matches[0]) == 2 {
+				for i, match := range matches {
+					c.Params[route.paramNames[i]] = match[1]
+				}
 			}
 
 			err = route.handler.serveContext(c)
@@ -101,33 +108,33 @@ func getPatternAndParamNames(pattern string) (string, []string) {
 	return pattern, paramNames
 }
 
-func (m *mux) On(pattern string, nmux mux) {
+func (m *Mux) On(pattern string, handler func (*Mux)) {
 	newPattern, paramNames := getPatternAndParamNames(pattern)
-	m.routes = append(m.routes, route{"GET", newPattern, paramNames, nmux})
+	m.routes = append(m.routes, route{"ALL", newPattern, paramNames, MuxHandler(handler)})
 }
 
-func (m *mux) Add(method, pattern string, handler func(*Context) error) {
+func (m *Mux) Add(method, pattern string, handler func(*Context) error) {
 	newPattern, paramNames := getPatternAndParamNames(pattern)
 
 	m.routes = append(m.routes, route{method, newPattern, paramNames, Handler(handler)})
 }
 
-func (m *mux) Get(pattern string, handler Handler) {
+func (m *Mux) Get(pattern string, handler Handler) {
 	m.Add("GET", pattern, handler)
 }
 
-func (m *mux) Post(pattern string, handler Handler) {
+func (m *Mux) Post(pattern string, handler Handler) {
 	m.Add("POST", pattern, handler)
 }
 
-func (m *mux) Put(pattern string, handler Handler) {
+func (m *Mux) Put(pattern string, handler Handler) {
 	m.Add("PUT", pattern, handler)
 }
 
-func (m *mux) Delete(pattern string, handler Handler) {
+func (m *Mux) Delete(pattern string, handler Handler) {
 	m.Add("DELETE", pattern, handler)
 }
 
-func (m mux) Routes() []route {
+func (m Mux) Routes() []route {
 	return m.routes
 }

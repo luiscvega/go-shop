@@ -14,6 +14,103 @@ import (
 	"./models/product"
 )
 
+func main() {
+	var err error
+	product.DB, err = sql.Open("postgres", "dbname=shop")
+	if err != nil {
+		panic(err)
+	}
+	defer product.DB.Close()
+
+	mux := cuba.New()
+
+	mux.On("products", func(mux *cuba.Mux) {
+
+		mux.Post("products", func(c *cuba.Context) error {
+			var p product.Product
+			p.Name = c.R.FormValue("name")
+			p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
+
+			err := product.Create(&p)
+			if err != nil {
+				return err
+			}
+
+			c.Redirect(fmt.Sprintf("/products/%d", p.Id))
+
+			return nil
+		})
+
+		mux.Get("products/:id", func(c *cuba.Context) error {
+			var p product.Product
+			p.Id, _ = strconv.Atoi(c.Params["id"])
+
+			err := product.Fetch(&p)
+			if err != nil {
+				return err
+			}
+
+			c.Render("products/show", p)
+
+			return nil
+		})
+
+		mux.Put("products/:id", func(c *cuba.Context) error {
+			var p product.Product
+			p.Id, _ = strconv.Atoi(c.Params["id"])
+			p.Name = c.R.FormValue("name")
+			p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
+
+			err := product.Update(p)
+			if err != nil {
+				return err
+			}
+
+			c.Redirect("/")
+
+			return nil
+		})
+
+		mux.Delete("products/:id", func(c *cuba.Context) error {
+			id, _ := strconv.Atoi(c.Params["id"])
+			product.Delete(id)
+
+			c.Redirect("/")
+
+			return nil
+		})
+
+		mux.Get("products", func(c *cuba.Context) error {
+			products, err := product.All()
+			if err != nil {
+				return err
+			}
+
+			c.Render("products/index", products)
+
+			return nil
+		})
+
+	})
+
+	mux.Get("", func(c *cuba.Context) error {
+		c.Render("index", nil)
+
+		return nil
+	})
+
+	for _, routes := range mux.Routes() {
+		fmt.Println(routes)
+	}
+
+	c := chain.New(mux)
+	c.Use(ServeStaticFiles)
+	c.Use(MethodOverride)
+
+	fmt.Println("Starting...")
+	http.ListenAndServe(":8080", c)
+}
+
 func ServeStaticFiles(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		matched, _ := regexp.MatchString("^/public/(css)", r.URL.Path)
@@ -42,107 +139,4 @@ func MethodOverride(h http.Handler) http.Handler {
 
 		h.ServeHTTP(w, r)
 	})
-}
-
-func main() {
-	var err error
-	product.DB, err = sql.Open("postgres", "dbname=shop")
-	if err != nil {
-		panic(err)
-	}
-	defer product.DB.Close()
-
-	mux := cuba.New()
-
-	mux.Get("/products/:id", func(c *cuba.Context) error {
-		var p product.Product
-		p.Id, _ = strconv.Atoi(c.Params["id"])
-
-		err := product.Fetch(&p)
-		if err != nil {
-			return err
-		}
-
-		c.Render("products/show", p)
-
-		return nil
-	})
-
-	mux.Put("/products/:id", func(c *cuba.Context) error {
-		var p product.Product
-		p.Id, _ = strconv.Atoi(c.Params["id"])
-		p.Name = c.R.FormValue("name")
-		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
-
-		err := product.Update(p)
-		if err != nil {
-			return err
-		}
-
-		c.Redirect("/")
-
-		return nil
-	})
-
-	mux.Delete("/products/:id", func(c *cuba.Context) error {
-		id, _ := strconv.Atoi(c.Params["id"])
-		product.Delete(id)
-
-		c.Redirect("/")
-
-		return nil
-	})
-
-	mux.Get("/products", func(c *cuba.Context) error {
-		products, err := product.All()
-		if err != nil {
-			return err
-		}
-
-		c.Render("products/index", products)
-
-		return nil
-	})
-
-	mux.Post("/products", func(c *cuba.Context) error {
-		var p product.Product
-		p.Name = c.R.FormValue("name")
-		p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
-
-		err := product.Create(&p)
-		if err != nil {
-			return err
-		}
-
-		c.Redirect(fmt.Sprintf("/products/%d", p.Id))
-
-		return nil
-	})
-
-	aboutMux := cuba.New()
-
-	aboutMux.Get("/new", func(c *cuba.Context) error {
-		c.Render("about", nil)
-
-		return nil
-	})
-
-	mux.On("/about", aboutMux)
-
-	mux.Get("/", func(c *cuba.Context) error {
-		c.Render("index", nil)
-
-		return nil
-	})
-
-	for _, routes := range mux.Routes() {
-		fmt.Println(routes)
-	}
-
-	c := chain.New(mux)
-	c.Use(ServeStaticFiles)
-	c.Use(MethodOverride)
-
-	fmt.Println("Starting...")
-	http.ListenAndServe(":8080", c)
 }
