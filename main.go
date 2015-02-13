@@ -26,7 +26,7 @@ func main() {
 
 	mux.On("products", func(mux *cuba.Mux) {
 
-		mux.Post("products", func(c *cuba.Context) error {
+		mux.Post("/", func(c *cuba.Context) error {
 			var p product.Product
 			p.Name = c.R.FormValue("name")
 			p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
@@ -41,7 +41,7 @@ func main() {
 			return nil
 		})
 
-		mux.Get("products/:id", func(c *cuba.Context) error {
+		mux.Get(":id", func(c *cuba.Context) error {
 			var p product.Product
 			p.Id, _ = strconv.Atoi(c.Params["id"])
 
@@ -55,7 +55,7 @@ func main() {
 			return nil
 		})
 
-		mux.Put("products/:id", func(c *cuba.Context) error {
+		mux.Put(":id", func(c *cuba.Context) error {
 			var p product.Product
 			p.Id, _ = strconv.Atoi(c.Params["id"])
 			p.Name = c.R.FormValue("name")
@@ -71,7 +71,7 @@ func main() {
 			return nil
 		})
 
-		mux.Delete("products/:id", func(c *cuba.Context) error {
+		mux.Delete(":id", func(c *cuba.Context) error {
 			id, _ := strconv.Atoi(c.Params["id"])
 			err := product.Delete(id)
 
@@ -84,7 +84,7 @@ func main() {
 			return nil
 		})
 
-		mux.Get("products", func(c *cuba.Context) error {
+		mux.Get("/", func(c *cuba.Context) error {
 			products, err := product.All()
 			if err != nil {
 				return err
@@ -97,7 +97,7 @@ func main() {
 
 	})
 
-	mux.Get("", func(c *cuba.Context) error {
+	mux.Get("/", func(c *cuba.Context) error {
 		c.Render("index", nil)
 
 		return nil

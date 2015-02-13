@@ -18,20 +18,16 @@ type route struct {
 	handler    ContextHandler
 }
 
-func (r route) isRoot() bool {
-	if r.pattern == "/" {
-		return true
-	}
-
-	return false
-}
-
 type Mux struct {
 	routes []route
 }
 
 func (m Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	context := &Context{w, r, make(map[string]string), r.URL.Path[1:]}
+	if r.URL.Path == "/favicon.ico" {
+		return
+	}
+
+	context := &Context{w, r, make(map[string]string), r.URL.Path}
 
 	err := m.serveContext(context)
 	if err != nil {
@@ -43,8 +39,6 @@ func (m Mux) serveContext(c *Context) error {
 	var err error
 
 	for _, route := range m.routes {
-		fmt.Println(c.R.Method, c.PathInfo, route.pattern, route.method)
-
 		if route.method != "ALL" && c.R.Method != route.method {
 			continue
 		}
@@ -55,16 +49,16 @@ func (m Mux) serveContext(c *Context) error {
 			break
 		}
 
-		if route.isRoot() {
+		if route.pattern == "/" {
 			return nil
 		}
 
-		// Check for captures (e.g. "/products/:id" =~ "/products/123")
+		// Check for captures (e.g. "/products/([^\/]+)" =~ "/products/123")
+		// /\A\/(#{pattern})(\/|\z)/)
 		matches := regexp.MustCompile(route.pattern).FindAllStringSubmatch(c.PathInfo, -1)
+		fmt.Println(matches, route.method, route.pattern, c.PathInfo)
 
 		if len(matches) > 0 {
-			fmt.Println(matches)
-
 			if len(matches[0]) == 2 {
 				for i, match := range matches {
 					c.Params[route.paramNames[i]] = match[1]
@@ -105,10 +99,14 @@ func getPatternAndParamNames(pattern string) (string, []string) {
 		}
 	}
 
+	if pattern != "/" {
+		pattern = "/" + pattern
+	}
+
 	return pattern, paramNames
 }
 
-func (m *Mux) On(pattern string, handler func (*Mux)) {
+func (m *Mux) On(pattern string, handler func(*Mux)) {
 	newPattern, paramNames := getPatternAndParamNames(pattern)
 	m.routes = append(m.routes, route{"ALL", newPattern, paramNames, MuxHandler(handler)})
 }
