@@ -17,6 +17,14 @@ type route struct {
 	handler    ContextHandler
 }
 
+func (r route) isRoot() bool {
+	if r.pattern == "/" {
+		return true
+	}
+
+	return false
+}
+
 type mux struct {
 	routes []route
 }
@@ -44,7 +52,7 @@ func (m mux) serveContext(c *Context) error {
 			break
 		}
 
-		if route.pattern == "/" {
+		if route.isRoot() {
 			return nil
 		}
 
