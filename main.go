@@ -73,7 +73,11 @@ func main() {
 
 		mux.Delete("products/:id", func(c *cuba.Context) error {
 			id, _ := strconv.Atoi(c.Params["id"])
-			product.Delete(id)
+			err := product.Delete(id)
+
+			if err != nil {
+				return err
+			}
 
 			c.Redirect("/")
 
