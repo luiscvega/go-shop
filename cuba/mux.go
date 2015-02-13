@@ -11,13 +11,6 @@ func New() Mux {
 	return Mux{make([]route, 0)}
 }
 
-type route struct {
-	method     string
-	pattern    string
-	paramNames []string
-	handler    ContextHandler
-}
-
 type Mux struct {
 	routes []route
 }
@@ -36,53 +29,63 @@ func (m Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m Mux) serveContext(c *Context) error {
-	var err error
-
 	for _, route := range m.routes {
 		if route.method != "ALL" && c.R.Method != route.method {
 			continue
 		}
 
-		// Check for exact matches (e.g. "/products/new" == "/products/new")
-		if c.PathInfo == route.pattern {
-			err = route.handler.serveContext(c)
-			break
-		}
-
-		if route.pattern == "/" {
-			return nil
-		}
-
-		// Check for captures (e.g. "/products/([^\/]+)" =~ "/products/123")
-		// /\A\/(#{pattern})(\/|\z)/)
-		matches := regexp.MustCompile(route.pattern).FindAllStringSubmatch(c.PathInfo, -1)
-		fmt.Println(matches, route.method, route.pattern, c.PathInfo)
-
-		if len(matches) > 0 {
-			if len(matches[0]) == 2 {
-				for i, match := range matches {
-					c.Params[route.paramNames[i]] = match[1]
-				}
-			}
-
-			err = route.handler.serveContext(c)
-			break
+		err := route.try(c)
+		if err != nil {
+			return err
 		}
 	}
 
-	return err
+	return nil
 }
 
-func consume(names []string, pattern, pathInfo string) map[string]string {
-	params := make(map[string]string, len(names))
+func (route route) try(c *Context) error {
+	origPath := c.PathInfo
+	defer func() {
+		c.PathInfo = origPath
+	}()
 
-	values := regexp.MustCompile(pattern).FindAllStringSubmatch(pathInfo, -1)
-
-	for i, value := range values {
-		params[names[i]] = value[1]
+	// Check for exact matches (e.g. "/products/new" == "/products/new")
+	if c.PathInfo == route.pattern {
+		return route.handler.serveContext(c)
 	}
 
-	return params
+	if route.pattern == "/" {
+		return nil
+	}
+
+	// Check for captures (e.g. "/products/([^\/]+)" =~ "/products/123")
+	pattern := `\A\/` + route.pattern + `(\/|\z)`
+	matched, _ := regexp.MatchString(pattern, c.PathInfo)
+
+	fmt.Println("PATTERN:", pattern, "PATH:", c.PathInfo, "MATCHED:", matched)
+
+	if matched {
+		matchData := regexp.MustCompile(pattern).FindAllStringSubmatch(c.PathInfo, -1)[0]
+		captures := matchData[1 : len(matchData)-1]
+		//lastMatch := matchData[len(matchData)]
+
+		if len(captures) > 0 {
+			for i, capture := range captures {
+				c.Params[route.paramNames[i]] = capture
+			}
+		}
+
+		return route.handler.serveContext(c)
+	}
+
+	return nil
+}
+
+type route struct {
+	method     string
+	pattern    string
+	paramNames []string
+	handler    ContextHandler
 }
 
 var re = regexp.MustCompile(`:(\w+)`)
@@ -97,10 +100,6 @@ func getPatternAndParamNames(pattern string) (string, []string) {
 		for i, match := range matches {
 			paramNames[i] = match[1]
 		}
-	}
-
-	if pattern != "/" {
-		pattern = "/" + pattern
 	}
 
 	return pattern, paramNames
