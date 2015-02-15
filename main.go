@@ -26,7 +26,7 @@ func main() {
 
 	mux.On("products", func(mux *cuba.Mux) {
 
-		mux.Post("/", func(c *cuba.Context) error {
+		mux.Post("", func(c *cuba.Context) error {
 			var p product.Product
 			p.Name = c.R.FormValue("name")
 			p.Price, _ = strconv.Atoi(c.R.FormValue("price"))

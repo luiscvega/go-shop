@@ -34,48 +34,43 @@ func (m Mux) serveContext(c *Context) error {
 			continue
 		}
 
-		err := route.try(c)
-		if err != nil {
-			return err
-		}
-	}
+		//// Check for exact matches (e.g. "/products/new" == "/products/new")
+		//if c.PathInfo == route.pattern {
+		//return route.handler.serveContext(c)
+		//}
 
-	return nil
-}
+		//if route.pattern == "/" {
+		//return nil
+		//}
 
-func (route route) try(c *Context) error {
-	origPath := c.PathInfo
-	defer func() {
-		c.PathInfo = origPath
-	}()
+		// Check for captures (e.g. "/products/([^\/]+)" =~ "/products/123")
+		re := regexp.MustCompile(`\A\/` + route.pattern + `(\/|\z)`)
 
-	// Check for exact matches (e.g. "/products/new" == "/products/new")
-	if c.PathInfo == route.pattern {
-		return route.handler.serveContext(c)
-	}
+		matched := re.MatchString(c.PathInfo)
+		fmt.Println(re, c.PathInfo, matched)
 
-	if route.pattern == "/" {
-		return nil
-	}
+		if matched {
+			matchData := re.FindAllStringSubmatch(c.PathInfo, -1)[0]
+			path := matchData[0]
 
-	// Check for captures (e.g. "/products/([^\/]+)" =~ "/products/123")
-	pattern := `\A\/` + route.pattern + `(\/|\z)`
-	matched, _ := regexp.MatchString(pattern, c.PathInfo)
+			var captures []string
+			if len(matchData) > 2 {
+				// There are captures
+				captures = matchData[1 : len(matchData)-1]
 
-	fmt.Println("PATTERN:", pattern, "PATH:", c.PathInfo, "MATCHED:", matched)
-
-	if matched {
-		matchData := regexp.MustCompile(pattern).FindAllStringSubmatch(c.PathInfo, -1)[0]
-		captures := matchData[1 : len(matchData)-1]
-		//lastMatch := matchData[len(matchData)]
-
-		if len(captures) > 0 {
-			for i, capture := range captures {
-				c.Params[route.paramNames[i]] = capture
+				for i, name := range route.paramNames {
+					c.Params[name] = captures[i]
+				}
 			}
+
+			fmt.Println("BEFORE:", c.PathInfo)
+			fmt.Println("MATCHDATA:", matchData)
+			c.PathInfo = matchData[len(matchData)-1] + c.PathInfo[len(path):]
+			fmt.Println("AFTER:", c.PathInfo)
+
+			return route.handler.serveContext(c)
 		}
 
-		return route.handler.serveContext(c)
 	}
 
 	return nil
