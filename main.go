@@ -26,7 +26,53 @@ func main() {
 
 	mux.On("products", func(mux *cuba.Mux) {
 
-		mux.Post("", func(c *cuba.Context) error {
+		mux.On(":id", func(mux *cuba.Mux) {
+			mux.Get("/", func(c *cuba.Context) error {
+				var p product.Product
+				p.Id, _ = strconv.Atoi(c.Params["id"])
+
+				err := product.Fetch(&p)
+				if err != nil {
+					return err
+				}
+
+				c.Render("products/show", p)
+
+				return nil
+			})
+
+			mux.Put("/", func(c *cuba.Context) error {
+				var p product.Product
+				p.Id, _ = strconv.Atoi(c.Params["id"])
+				p.Name = c.R.FormValue("name")
+				p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
+
+				err := product.Update(p)
+				if err != nil {
+					return err
+				}
+
+				c.Redirect("/")
+
+				return nil
+			})
+
+			mux.Delete("/", func(c *cuba.Context) error {
+				id, _ := strconv.Atoi(c.Params["id"])
+				err := product.Delete(id)
+
+				if err != nil {
+					return err
+				}
+
+				c.Redirect("/")
+
+				return nil
+			})
+
+		})
+
+		mux.Post("/", func(c *cuba.Context) error {
 			var p product.Product
 			p.Name = c.R.FormValue("name")
 			p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
@@ -37,49 +83,6 @@ func main() {
 			}
 
 			c.Redirect(fmt.Sprintf("/products/%d", p.Id))
-
-			return nil
-		})
-
-		mux.Get(":id", func(c *cuba.Context) error {
-			var p product.Product
-			p.Id, _ = strconv.Atoi(c.Params["id"])
-
-			err := product.Fetch(&p)
-			if err != nil {
-				return err
-			}
-
-			c.Render("products/show", p)
-
-			return nil
-		})
-
-		mux.Put(":id", func(c *cuba.Context) error {
-			var p product.Product
-			p.Id, _ = strconv.Atoi(c.Params["id"])
-			p.Name = c.R.FormValue("name")
-			p.Price, _ = strconv.Atoi(c.R.FormValue("price"))
-
-			err := product.Update(p)
-			if err != nil {
-				return err
-			}
-
-			c.Redirect("/")
-
-			return nil
-		})
-
-		mux.Delete(":id", func(c *cuba.Context) error {
-			id, _ := strconv.Atoi(c.Params["id"])
-			err := product.Delete(id)
-
-			if err != nil {
-				return err
-			}
-
-			c.Redirect("/")
 
 			return nil
 		})

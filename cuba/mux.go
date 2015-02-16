@@ -34,41 +34,47 @@ func (m Mux) serveContext(c *Context) error {
 			continue
 		}
 
-		//// Check for exact matches (e.g. "/products/new" == "/products/new")
-		//if c.PathInfo == route.pattern {
-		//return route.handler.serveContext(c)
-		//}
-
-		//if route.pattern == "/" {
-		//return nil
-		//}
+		// Special case for root patterns and root paths
+		if route.pattern == "/" && c.PathInfo == "/" {
+			return route.handler.serveContext(c)
+		}
 
 		// Check for captures (e.g. "/products/([^\/]+)" =~ "/products/123")
 		re := regexp.MustCompile(`\A\/` + route.pattern + `(\/|\z)`)
 
 		matched := re.MatchString(c.PathInfo)
-		fmt.Println(re, c.PathInfo, matched)
 
 		if matched {
 			matchData := re.FindAllStringSubmatch(c.PathInfo, -1)[0]
 			path := matchData[0]
 
-			var captures []string
+			fmt.Println("====================================")
+			fmt.Println("MATCHED:")
+			fmt.Println("      PATH:", c.PathInfo)
+			fmt.Println("   PATTERN:", re)
+
 			if len(matchData) > 2 {
-				// There are captures
-				captures = matchData[1 : len(matchData)-1]
+				captures := matchData[1 : len(matchData)-1]
 
 				for i, name := range route.paramNames {
 					c.Params[name] = captures[i]
 				}
 			}
 
-			fmt.Println("BEFORE:", c.PathInfo)
-			fmt.Println("MATCHDATA:", matchData)
-			c.PathInfo = matchData[len(matchData)-1] + c.PathInfo[len(path):]
-			fmt.Println("AFTER:", c.PathInfo)
+			c.PathInfo = "/" + c.PathInfo[len(path):]
+
+			fmt.Println("  NEW PATH:", c.PathInfo)
+			fmt.Println("====================================")
+			fmt.Println()
 
 			return route.handler.serveContext(c)
+		} else {
+			fmt.Println("====================================")
+			fmt.Println("NO MATCH:")
+			fmt.Println("      PATH:", c.PathInfo)
+			fmt.Println("   PATTERN:", re)
+			fmt.Println("====================================")
+			fmt.Println()
 		}
 
 	}
